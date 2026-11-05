@@ -1,6 +1,6 @@
 {
-  "name": "Dozy",
-  "short_name": "Dozy",
+  "name": "SleepySloth",
+  "short_name": "SleepySloth",
   "description": "Baby sleep log with nap predictions, feeds, diapers and sleep sounds.",
   "start_url": "./",
   "scope": "./",
