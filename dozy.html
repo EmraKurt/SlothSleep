@@ -1,0 +1,721 @@
+<title>Dozy Sleep Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: one-column phone app — status card, plan card, quick log, timeline; bottom tab bar. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #e4e8f0;
+  --ink: #1b2233;
+  --muted: #5d6780;
+  --line: #d5dbe6;
+  --accent: #3b4fb8;        /* sleep / primary */
+  --accent-ink: #ffffff;
+  --accent-soft: #dfe3fa;
+  --feed: #b86e12;
+  --feed-soft: #f6e6cf;
+  --diaper: #3f8460;
+  --diaper-soft: #d9eee2;
+  --note: #7a5aa8;
+  --note-soft: #ebe2f6;
+  --danger: #b3392f;
+  --moon: #e8b84a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1220; --surface: #171c2e; --surface-2: #20263b; --ink: #e6e9f2; --muted: #98a1b9; --line: #2b3249;
+  --accent: #8e9cf5; --accent-ink: #0e1220; --accent-soft: #252c4d;
+  --feed: #e9a956; --feed-soft: #3a2c19; --diaper: #74c497; --diaper-soft: #1c3428; --note: #c0a3ec; --note-soft: #2f2643;
+  --danger: #f07c71; --moon: #f0c768; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1220; --surface: #171c2e; --surface-2: #20263b; --ink: #e6e9f2; --muted: #98a1b9; --line: #2b3249;
+  --accent: #8e9cf5; --accent-ink: #0e1220; --accent-soft: #252c4d;
+  --feed: #e9a956; --feed-soft: #3a2c19; --diaper: #74c497; --diaper-soft: #1c3428; --note: #c0a3ec; --note-soft: #2f2643;
+  --danger: #f07c71; --moon: #f0c768; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 110px; display: flex; flex-direction: column; gap: 14px; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.brand svg { flex: none; }
+.who { text-align: right; min-width: 0; }
+.who b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who span { color: var(--muted); font-size: 13px; }
+
+.card { background: var(--surface); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 0; text-wrap: balance; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Status card */
+.status { background: var(--accent); color: var(--accent-ink); gap: 14px; }
+.status.awake { background: var(--surface); color: var(--ink); }
+.status .eyebrow { color: inherit; opacity: 0.75; }
+.status .big { font-family: var(--font-display); font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.status .since { opacity: 0.8; font-size: 14px; }
+.btn-main { border: 0; border-radius: 14px; padding: 14px 16px; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--accent); color: var(--accent-ink); }
+.status:not(.awake) .btn-main { background: var(--accent-ink); color: var(--accent); }
+
+/* Plan card */
+.plan-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.plan-cell { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.plan-cell .t { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; }
+.plan-cell .w { font-size: 12.5px; color: var(--muted); }
+.bar { height: 8px; border-radius: 8px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 8px; transition: width .4s; }
+.bar.over > i { background: var(--feed); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.pill.warn { background: var(--feed-soft); color: var(--feed); }
+
+/* Quick log */
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.qbtn { border: 0; background: var(--surface); border-radius: 14px; padding: 12px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.qbtn .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; }
+.k-sleep { background: var(--accent-soft); color: var(--accent); }
+.k-feed { background: var(--feed-soft); color: var(--feed); }
+.k-diaper { background: var(--diaper-soft); color: var(--diaper); }
+.k-note { background: var(--note-soft); color: var(--note); }
+
+/* Timeline */
+.tl { display: flex; flex-direction: column; }
+.tl-item { display: grid; grid-template-columns: 54px 30px 1fr auto; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; width: 100%; }
+.tl-item:first-child { border-top: 0; }
+.tl-time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; }
+.tl-dot { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; }
+.tl-body { min-width: 0; }
+.tl-body b { font-weight: 700; }
+.tl-body div { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-dur { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.day-head { display: flex; justify-content: space-between; align-items: baseline; }
+.daynav { display: flex; gap: 6px; align-items: center; }
+.iconbtn { border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; }
+.iconbtn:disabled { opacity: 0.35; cursor: default; }
+.empty { text-align: center; padding: 18px 8px; color: var(--muted); }
+
+/* Totals */
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tot { background: var(--surface-2); border-radius: 12px; padding: 8px 10px; }
+.tot b { display: block; font-family: var(--font-display); font-size: 18px; white-space: nowrap; }
+.tot span { font-size: 12px; color: var(--muted); }
+
+/* Trends chart */
+.chart { width: 100%; height: auto; display: block; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Sounds */
+.sounds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.snd { border: 2px solid transparent; background: var(--surface-2); border-radius: 14px; padding: 14px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.snd b { font-family: var(--font-display); font-size: 17px; }
+.snd span { font-size: 12.5px; color: var(--muted); }
+.snd[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.wave { display: flex; gap: 3px; align-items: flex-end; height: 18px; }
+.wave i { width: 3px; background: var(--accent); border-radius: 2px; height: 30%; }
+.playing .wave i { animation: bob 1.1s ease-in-out infinite; }
+.wave i:nth-child(2) { animation-delay: .15s } .wave i:nth-child(3) { animation-delay: .3s } .wave i:nth-child(4) { animation-delay: .45s } .wave i:nth-child(5) { animation-delay: .6s }
+@keyframes bob { 0%,100% { height: 25% } 50% { height: 100% } }
+@media (prefers-reduced-motion: reduce) { .playing .wave i { animation: none; height: 70%; } .bar > i { transition: none; } }
+
+/* Forms */
+label.f { display: flex; flex-direction: column; gap: 5px; font-weight: 700; font-size: 13px; }
+.in { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 11px 12px; font-weight: 400; font-size: 16px; min-width: 0; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.danger { background: none; color: var(--danger); padding-inline: 4px; }
+.btn.danger.confirm { background: var(--danger); color: var(--surface); padding-inline: 16px; }
+.actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.actions .r { display: flex; gap: 10px; margin-left: auto; }
+
+/* Bottom sheet */
+.scrim { position: fixed; inset: 0; background: rgb(10 12 20 / 0.45); z-index: 40; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--bg); border-radius: 22px 22px 0 0; max-height: 88%; overflow-y: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-top: 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+.sheet-in { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* Tab bar */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+nav.tabs .in-tabs { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+nav.tabs button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+nav.tabs button[aria-current="page"] { color: var(--accent); }
+
+.banner { background: var(--feed-soft); color: var(--feed); border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 50; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; max-width: calc(100% - 32px); }
+.setup p { margin: 0; }
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M17.5 3.5a9.5 9.5 0 1 0 5 15.6A8 8 0 0 1 17.5 3.5z" fill="var(--moon)"/></svg>
+      Dozy
+    </div>
+    <div class="who" id="who"></div>
+  </header>
+  <div id="banner"></div>
+  <main id="view" style="display:flex;flex-direction:column;gap:14px">
+    <div class="card"><p class="muted" style="margin:0">Loading your log…</p></div>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="in-tabs">
+    <button data-tab="today" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Today</button>
+    <button data-tab="trends"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Trends</button>
+    <button data-tab="sounds"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0"/></svg>Sounds</button>
+    <button data-tab="baby"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="9" r="4.5"/><path d="M4.5 20.5c1.4-3.6 4.2-5.3 7.5-5.3s6.1 1.7 7.5 5.3"/></svg>Baby</button>
+  </div>
+</nav>
+
+<div id="sheetRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+(() => {
+"use strict";
+
+// ---------- helpers ----------
+const MIN = 60e3, HOUR = 36e5, DAY = 864e5;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const fmtDur = ms => { const m = Math.max(0, Math.round(ms / MIN)); const h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`; };
+const fmtClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return h ? `${h}:${String(m).padStart(2, "0")}` : `${m}m`; };
+const startOfDay = ms => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const toInput = ms => { const d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+const fromInput = v => v ? new Date(v).getTime() : null;
+const newId = () => "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const i = s.length >> 1; return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2; };
+const dayLabel = ms => { const t = startOfDay(Date.now()); const d = startOfDay(ms); if (d === t) return "Today"; if (d === t - DAY) return "Yesterday"; return new Date(ms).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" }); };
+
+// ---------- state ----------
+const S = { profile: null, events: [], ready: false, readOnly: false, tab: "today", dayOffset: 0, mode: "local", stale: false };
+
+// ---------- storage: shared db when the viewer provides it, else this device ----------
+const LS_KEY = "dozy-log-v1";
+const store = {
+  db: null,
+  async init() {
+    try { if (window.claude && claude.use) this.db = await claude.use("db"); } catch { this.db = null; }
+    if (this.db) {
+      S.mode = "shared";
+      try { const u = await claude.use("user"); const can = u && u.can ? await u.can("data.write") : null; if (can === false) S.readOnly = true; } catch {}
+      const timer = setTimeout(() => { S.stale = true; if (!S.ready) { S.ready = true; } render(); }, 10000);
+      let gotEvents = false, gotProfile = false;
+      const settle = (snap) => { if (!snap.metadata.fromCache && gotEvents && gotProfile) { clearTimeout(timer); S.stale = false; } S.ready = true; render(); };
+      this.db.doc("settings/profile").onSnapshot(snap => { gotProfile = true; S.profile = snap.exists ? snap.data() : null; settle(snap); }, onDbError);
+      this.db.collection("events").orderBy("start", "desc").limit(1000).onSnapshot(snap => {
+        gotEvents = true; S.events = snap.docs.map(d => ({ ...d.data(), id: d.id })); settle(snap);
+      }, onDbError);
+    } else {
+      S.mode = "local";
+      try { const raw = localStorage.getItem(LS_KEY); if (raw) { const o = JSON.parse(raw); S.profile = o.profile || null; S.events = o.events || []; } } catch {}
+      S.ready = true; render();
+    }
+  },
+  saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify({ profile: S.profile, events: S.events })); } catch {} },
+  async setProfile(p) {
+    if (this.db) return this.db.doc("settings/profile").set(p);
+    S.profile = p; this.saveLocal(); render();
+  },
+  async put(ev) {
+    const clean = { ...ev }; delete clean.id;
+    if (this.db) return this.db.collection("events").doc(ev.id).set(clean);
+    const i = S.events.findIndex(e => e.id === ev.id);
+    if (i >= 0) S.events[i] = ev; else S.events.push(ev);
+    S.events.sort((a, b) => b.start - a.start); this.saveLocal(); render();
+  },
+  async remove(id) {
+    if (this.db) return this.db.collection("events").doc(id).delete();
+    S.events = S.events.filter(e => e.id !== id); this.saveLocal(); render();
+  }
+};
+function onDbError(e) { S.ready = true; S.stale = true; render(); console.warn("db", e && e.code); }
+async function safe(p, ok) {
+  try { await p; if (ok) toast(ok); }
+  catch (e) {
+    if (e && e.code === "invalid_argument" && store.db) { S.readOnly = true; render(); toast("You can view this log but not change it."); }
+    else if (e && e.code === "quota_exceeded") toast("The log is full. Delete old entries to add new ones.");
+    else toast("Couldn't save. Check your connection and try again.");
+  }
+}
+
+// ---------- sleep model ----------
+// [age under N months, typical wake window in minutes, naps per day]
+const NORMS = [[1, 50, 5], [2, 70, 4], [3, 85, 4], [4, 100, 3], [6, 130, 3], [8, 160, 2], [10, 185, 2], [13, 210, 2], [15, 240, 1], [18, 300, 1], [Infinity, 330, 1]];
+const ageMonths = (now) => S.profile && S.profile.birth ? (now - new Date(S.profile.birth + "T00:00").getTime()) / (30.44 * DAY) : null;
+const norm = m => { for (const r of NORMS) if (m < r[0]) return { ww: r[1], naps: r[2] }; };
+const sleeps = () => S.events.filter(e => e.type === "sleep").sort((a, b) => a.start - b.start);
+function isNight(e) {
+  const h = new Date(e.start).getHours();
+  const dur = (e.end || Date.now()) - e.start;
+  return (h >= 18 || h < 5) && (!e.end || dur >= 3 * HOUR) || dur >= 6 * HOUR;
+}
+function ageText(now) {
+  const m = ageMonths(now); if (m == null) return "";
+  if (m < 0) return "Not born yet";
+  const w = Math.floor((now - new Date(S.profile.birth + "T00:00").getTime()) / (7 * DAY));
+  if (w < 13) return `${w} week${w === 1 ? "" : "s"} old`;
+  const mm = Math.floor(m); if (mm < 24) return `${mm} months old`;
+  return `${Math.floor(mm / 12)} y ${mm % 12} m old`;
+}
+
+function plan(now) {
+  const m = ageMonths(now); if (m == null || m < 0) return null;
+  const n = norm(m);
+  const all = sleeps();
+  const recent = all.filter(e => e.end && e.start > now - 10 * DAY);
+  // personal wake windows before naps, and personal nap lengths
+  const windows = [], napLens = [];
+  for (let i = 1; i < recent.length; i++) {
+    const a = recent[i - 1], b = recent[i];
+    const gap = b.start - a.end;
+    if (!isNight(b) && gap >= 20 * MIN && gap <= 7 * HOUR) windows.push(gap / MIN);
+  }
+  for (const e of recent) if (!isNight(e)) napLens.push((e.end - e.start) / MIN);
+  const personal = median(windows);
+  const weight = personal ? Math.min(windows.length / 12, 0.7) : 0;
+  let ww = personal ? n.ww * (1 - weight) + personal * weight : n.ww;
+  const napLen = median(napLens) || (m < 4 ? 45 : m < 12 ? 60 : 90);
+
+  const last = all[all.length - 1];
+  const out = { ww, base: n.ww, naps: n.naps, personal, samples: windows.length, napLen };
+  if (!last) return { ...out, state: "none" };
+  if (!last.end) return { ...out, state: "asleep", since: last.start, night: isNight(last) };
+
+  // naps since the last night sleep ended
+  const lastNight = [...all].reverse().find(e => e.end && isNight(e));
+  const dayStart = lastNight && now - lastNight.end < 18 * HOUR ? lastNight.end : startOfDay(now) + 5 * HOUR;
+  const napsToday = all.filter(e => e.end && !isNight(e) && e.start >= dayStart).length;
+  const lastWasShortNap = !isNight(last) && last.end - last.start < 40 * MIN;
+  let adj = lastWasShortNap ? ww * 0.85 : ww;
+  const awakeSince = last.end;
+  let remaining = Math.max(0, n.naps - napsToday);
+  // a nap that would start in the evening is really bedtime
+  if (remaining > 0 && new Date(awakeSince + adj * MIN).getHours() >= 18) remaining = 0;
+  let nextNap = null, bedtime;
+  if (remaining > 0) {
+    nextNap = awakeSince + adj * MIN;
+    let t = nextNap;
+    for (let i = 0; i < remaining; i++) { t += napLen * MIN; t += (i === remaining - 1 ? ww * 1.15 : ww) * MIN; }
+    bedtime = t;
+  } else {
+    bedtime = awakeSince + ww * 1.15 * MIN;
+  }
+  const target = nextNap ?? bedtime;
+  return { ...out, state: "awake", awakeSince, napsToday, remaining, nextNap, bedtime, target, shortNap: lastWasShortNap, windowLen: target - awakeSince };
+}
+
+// ---------- rendering ----------
+const ICON = {
+  sleep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  feed: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6M10 2v3l-2 3v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8l-2-3V2M8 12h8"/></svg>',
+  diaper: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 6h18v3c0 6-4 10-9 10S3 15 3 9z"/><path d="M8 6c0 3 1.5 5 4 5s4-2 4-5"/></svg>',
+  note: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>'
+};
+const FEED_LABEL = { left: "Breast · left", right: "Breast · right", bottle: "Bottle", solids: "Solids" };
+const DIAPER_LABEL = { wet: "Wet", dirty: "Dirty", both: "Wet + dirty" };
+
+function describe(e) {
+  if (e.type === "sleep") return { title: e.end ? (isNight(e) ? "Night sleep" : "Nap") : "Sleeping", sub: e.end ? `${fmtTime(e.start)}–${fmtTime(e.end)}` : `since ${fmtTime(e.start)}`, dur: e.end ? fmtDur(e.end - e.start) : "now" };
+  if (e.type === "feed") { const bits = []; if (e.amount) bits.push(`${e.amount} ml`); if (e.minutes) bits.push(`${e.minutes} min`); if (e.note) bits.push(e.note); return { title: FEED_LABEL[e.kind] || "Feed", sub: bits.join(" · "), dur: "" }; }
+  if (e.type === "diaper") return { title: "Diaper · " + (DIAPER_LABEL[e.kind] || ""), sub: e.note || "", dur: "" };
+  return { title: "Note", sub: e.note || "", dur: "" };
+}
+
+function render() {
+  const now = Date.now();
+  $("#who").innerHTML = S.profile ? `<b>${esc(S.profile.name || "Baby")}</b><span>${esc(ageText(now))}</span>` : "";
+  let b = "";
+  if (S.readOnly) b = `<div class="banner">You can view this log. Only people with edit access can add entries.</div>`;
+  else if (S.stale && S.mode === "shared") b = `<div class="banner">Can't reach the shared log right now. What you see may be out of date.</div>`;
+  $("#banner").innerHTML = b;
+  document.querySelectorAll("nav.tabs button").forEach(btn => btn.setAttribute("aria-current", btn.dataset.tab === S.tab ? "page" : "false"));
+  if (!S.ready) return;
+  const v = $("#view");
+  if (!S.profile && S.tab !== "sounds") { v.innerHTML = setupView(); return; }
+  v.innerHTML = S.tab === "today" ? todayView(now) : S.tab === "trends" ? trendsView(now) : S.tab === "sounds" ? soundsView() : babyView();
+  if (S.tab === "sounds") syncSoundUI();
+}
+
+function setupView() {
+  return `<section class="card setup">
+    <div class="eyebrow">Get started</div>
+    <h2>Who are we tracking?</h2>
+    <p class="muted">Dozy uses your baby's age to suggest nap times, then learns from the sleep you log.</p>
+    ${profileForm({ name: "", birth: "" }, "Start tracking")}
+  </section>`;
+}
+function profileForm(p, cta) {
+  return `<form id="profileForm" style="display:flex;flex-direction:column;gap:12px">
+    <label class="f" for="pName">Name<input class="in" id="pName" name="name" maxlength="40" required value="${esc(p.name)}" placeholder="e.g. Alva"></label>
+    <label class="f" for="pBirth">Birth date<input class="in" id="pBirth" name="birth" type="date" required value="${esc(p.birth)}" max="${toInput(Date.now()).slice(0, 10)}"></label>
+    <span class="small muted">Born early? Use the due date for better nap suggestions.</span>
+    <button class="btn primary" type="submit" ${S.readOnly ? "disabled" : ""}>${cta}</button>
+  </form>`;
+}
+
+function todayView(now) {
+  const p = plan(now);
+  const current = sleeps().find(e => !e.end);
+  let status;
+  if (current) {
+    status = `<section class="card status" aria-live="polite">
+      <div class="eyebrow">${isNight(current) ? "Night sleep" : "Napping"}</div>
+      <div class="big num" data-live="since" data-from="${current.start}">${fmtClock(now - current.start)}</div>
+      <div class="since">Fell asleep at ${fmtTime(current.start)}</div>
+      <button class="btn-main" data-act="wake" ${S.readOnly ? "disabled" : ""}>${ICON.sleep.replace('width="18" height="18"', 'width="20" height="20"')} Woke up</button>
+    </section>`;
+  } else if (p && p.state === "awake") {
+    status = `<section class="card status awake">
+      <div class="eyebrow">Awake</div>
+      <div class="big num" data-live="since" data-from="${p.awakeSince}">${fmtClock(now - p.awakeSince)}</div>
+      <div class="since">Woke up at ${fmtTime(p.awakeSince)}</div>
+      <button class="btn-main" data-act="sleep" ${S.readOnly ? "disabled" : ""}>${ICON.sleep} Fell asleep</button>
+    </section>`;
+  } else {
+    status = `<section class="card status awake">
+      <div class="eyebrow">Start here</div>
+      <h2>Log the first sleep</h2>
+      <div class="since muted">Tap when your baby falls asleep, or add a past sleep from the Sleep button below.</div>
+      <button class="btn-main" data-act="sleep" ${S.readOnly ? "disabled" : ""}>${ICON.sleep} Fell asleep now</button>
+    </section>`;
+  }
+  return status + planCard(p, now) + quickLog() + timelineCard(now);
+}
+
+function planCard(p, now) {
+  if (!p) return "";
+  const basis = p.samples >= 3 ? `Learned from ${p.samples} recent naps` : `Based on age · log a few naps to personalise`;
+  if (p.state === "asleep") {
+    return `<section class="card"><div class="eyebrow">Plan</div>
+      <p style="margin:0">${p.night ? "Night sleep in progress. The plan for tomorrow appears when you log the wake-up." : "Nap in progress. The next nap time appears when you log the wake-up."}</p>
+      <div class="small muted">Typical nap here: about ${fmtDur(p.napLen * MIN)} · ${basis}</div></section>`;
+  }
+  if (p.state !== "awake") {
+    return `<section class="card"><div class="eyebrow">Plan</div><p style="margin:0">At this age babies usually manage about <b>${fmtDur(p.base * MIN)}</b> awake between sleeps, with ${p.naps} nap${p.naps > 1 ? "s" : ""} a day.</p></section>`;
+  }
+  const pct = Math.min(100, ((now - p.awakeSince) / p.windowLen) * 100);
+  const over = now > p.target;
+  const left = p.target - now;
+  const label = p.nextNap ? "Next nap" : "Bedtime";
+  const chip = over ? `<span class="pill warn">Past the sleep window by ${fmtDur(-left)}</span>` : left < 20 * MIN ? `<span class="pill">Watch for sleepy cues</span>` : `<span class="pill num">${label} in ${fmtDur(left)}</span>`;
+  return `<section class="card">
+    <div class="day-head"><div class="eyebrow">Plan</div>${chip}</div>
+    <div class="bar ${over ? "over" : ""}" role="progressbar" aria-label="Wake window used" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+    <div class="plan-row">
+      ${p.nextNap ? `<div class="plan-cell"><div class="w">Next nap</div><div class="t num">${fmtTime(p.nextNap)}</div><div class="w num">${fmtTime(p.nextNap - 15 * MIN)}–${fmtTime(p.nextNap + 15 * MIN)}</div></div>` : `<div class="plan-cell"><div class="w">Naps today</div><div class="t num">${p.napsToday}</div><div class="w">Next sleep is bedtime</div></div>`}
+      <div class="plan-cell"><div class="w">Bedtime</div><div class="t num">${fmtTime(p.bedtime)}</div><div class="w num">${fmtTime(p.bedtime - 20 * MIN)}–${fmtTime(p.bedtime + 20 * MIN)}</div></div>
+    </div>
+    <div class="small muted">Wake window ≈ ${fmtDur(p.ww * MIN)}${p.shortNap ? " (shortened after a short nap)" : ""} · ${p.nextNap ? `${p.napsToday} of ${p.naps} naps done · ` : ""}${basis}</div>
+  </section>`;
+}
+
+function quickLog() {
+  const dis = S.readOnly ? "disabled" : "";
+  return `<section class="quick" aria-label="Log an entry">
+    <button class="qbtn" data-new="sleep" ${dis}><span class="ic k-sleep">${ICON.sleep}</span>Sleep</button>
+    <button class="qbtn" data-new="feed" ${dis}><span class="ic k-feed">${ICON.feed}</span>Feed</button>
+    <button class="qbtn" data-new="diaper" ${dis}><span class="ic k-diaper">${ICON.diaper}</span>Diaper</button>
+    <button class="qbtn" data-new="note" ${dis}><span class="ic k-note">${ICON.note}</span>Note</button>
+  </section>`;
+}
+
+function timelineCard(now) {
+  const d0 = startOfDay(now) - S.dayOffset * DAY, d1 = d0 + DAY;
+  const items = S.events.filter(e => e.start >= d0 && e.start < d1).sort((a, b) => b.start - a.start);
+  // totals for the day: sleep clipped to the calendar day
+  let sleepMs = 0;
+  for (const e of S.events) if (e.type === "sleep") { const a = Math.max(e.start, d0), z = Math.min(e.end || now, d1); if (z > a) sleepMs += z - a; }
+  const feeds = items.filter(e => e.type === "feed").length, diapers = items.filter(e => e.type === "diaper").length;
+  const list = items.length ? items.map(e => { const d = describe(e); return `<button class="tl-item" data-edit="${esc(e.id)}">
+      <span class="tl-time">${fmtTime(e.start)}</span>
+      <span class="tl-dot k-${e.type}">${ICON[e.type]}</span>
+      <span class="tl-body"><b>${esc(d.title)}</b>${d.sub ? `<div>${esc(d.sub)}</div>` : ""}</span>
+      <span class="tl-dur">${esc(d.dur)}</span></button>`; }).join("")
+    : `<div class="empty">Nothing logged ${S.dayOffset ? "on this day" : "yet today"}.</div>`;
+  return `<section class="card">
+    <div class="day-head"><h2>${dayLabel(d0)}</h2>
+      <div class="daynav"><button class="iconbtn" data-day="1" aria-label="Previous day"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="iconbtn" data-day="-1" aria-label="Next day" ${S.dayOffset === 0 ? "disabled" : ""}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button></div></div>
+    <div class="totals"><div class="tot"><b class="num">${fmtDur(sleepMs)}</b><span>Sleep</span></div><div class="tot"><b class="num">${feeds}</b><span>Feeds</span></div><div class="tot"><b class="num">${diapers}</b><span>Diapers</span></div></div>
+    <div class="tl">${list}</div>
+  </section>`;
+}
+
+function trendsView(now) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d0 = startOfDay(now) - i * DAY, d1 = d0 + DAY;
+    let day = 0, night = 0;
+    for (const e of S.events) if (e.type === "sleep") {
+      const a = Math.max(e.start, d0), z = Math.min(e.end || now, d1);
+      if (z > a) { if (isNight(e)) night += z - a; else day += z - a; }
+    }
+    const naps = S.events.filter(e => e.type === "sleep" && !isNight(e) && e.start >= d0 && e.start < d1).length;
+    const feeds = S.events.filter(e => e.type === "feed" && e.start >= d0 && e.start < d1).length;
+    days.push({ d0, day: day / HOUR, night: night / HOUR, naps, feeds });
+  }
+  const maxH = Math.max(16, Math.ceil(Math.max(...days.map(d => d.day + d.night)) / 4) * 4);
+  const W = 340, H = 200, L = 30, B = 24, T = 10, cw = (W - L - 6) / 7, bw = Math.min(26, cw * 0.6);
+  const y = h => T + (H - T - B) * (1 - h / maxH);
+  let grid = "";
+  for (let h = 0; h <= maxH; h += 4) grid += `<line x1="${L}" x2="${W - 4}" y1="${y(h)}" y2="${y(h)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(h) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${h}h</text>`;
+  let bars = "";
+  days.forEach((d, i) => {
+    const x = L + i * cw + (cw - bw) / 2;
+    const yn = y(d.night), yd = y(d.night + d.day);
+    bars += `<rect x="${x}" y="${yn}" width="${bw}" height="${Math.max(0, y(0) - yn)}" rx="4" fill="var(--accent)"/>`;
+    bars += `<rect x="${x}" y="${yd}" width="${bw}" height="${Math.max(0, yn - yd)}" rx="4" fill="var(--moon)"/>`;
+    const tot = d.day + d.night;
+    if (tot > 0) bars += `<text x="${x + bw / 2}" y="${yd - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">${tot.toFixed(1)}</text>`;
+    bars += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${new Date(d.d0).toLocaleDateString([], { weekday: "short" }).slice(0, 3)}</text>`;
+  });
+  const logged = days.filter(d => d.day + d.night > 0);
+  const avg = f => logged.length ? logged.reduce((s, d) => s + f(d), 0) / logged.length : 0;
+  const longest = S.events.filter(e => e.type === "sleep" && e.end && e.start > now - 7 * DAY).reduce((m, e) => Math.max(m, e.end - e.start), 0);
+  const p = plan(now);
+  return `<section class="card">
+    <div class="eyebrow">Last 7 days</div><h2>Hours of sleep per day</h2>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Stacked bars of day and night sleep for the last seven days">${grid}${bars}</svg>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Night</span><span><i style="background:var(--moon)"></i>Naps</span></div>
+  </section>
+  <section class="card">
+    <div class="eyebrow">Averages on logged days</div>
+    ${logged.length ? `<div class="stats">
+      <div class="tot"><b class="num">${fmtDur(avg(d => d.day + d.night) * HOUR)}</b><span>Total sleep</span></div>
+      <div class="tot"><b class="num">${fmtDur(avg(d => d.day) * HOUR)}</b><span>Daytime sleep</span></div>
+      <div class="tot"><b class="num">${avg(d => d.naps).toFixed(1)}</b><span>Naps per day</span></div>
+      <div class="tot"><b class="num">${avg(d => d.feeds).toFixed(1)}</b><span>Feeds per day</span></div>
+      <div class="tot"><b class="num">${fmtDur(longest)}</b><span>Longest stretch</span></div>
+      <div class="tot"><b class="num">${p && p.personal ? fmtDur(p.personal * MIN) : "—"}</b><span>Usual wake window</span></div>
+    </div>` : `<div class="empty">Log a few days of sleep to see averages here.</div>`}
+    ${p ? `<div class="small muted">Typical for this age: about ${fmtDur(p.base * MIN)} awake between sleeps and ${p.naps} nap${p.naps > 1 ? "s" : ""} a day. Every baby differs; these are guides, not targets.</div>` : ""}
+  </section>`;
+}
+
+function babyView() {
+  const p = S.profile || {};
+  const where = S.mode === "shared"
+    ? "Saved to this page's shared log. Anyone you share the page with as a Contributor or Editor sees and adds to the same log."
+    : "Saved in this browser on this device only. Clearing site data erases it.";
+  return `<section class="card">
+    <div class="eyebrow">Baby</div><h2>Profile</h2>
+    ${profileForm({ name: p.name || "", birth: p.birth || "" }, "Save profile")}
+  </section>
+  <section class="card">
+    <div class="eyebrow">Your data</div>
+    <p style="margin:0" class="small">${where}</p>
+    <div class="small muted num">${S.events.length} entries logged</div>
+  </section>`;
+}
+
+// ---------- sounds (generated live, no files) ----------
+const SOUNDS = [
+  { id: "white", name: "White noise", sub: "Bright, even hiss" },
+  { id: "pink", name: "Pink noise", sub: "Softer, like steady rain" },
+  { id: "brown", name: "Brown noise", sub: "Deep rumble, womb-like" },
+  { id: "waves", name: "Waves", sub: "Slow rising and falling surf" }
+];
+const audio = { ctx: null, src: null, gain: null, lfo: null, playing: null, vol: 0.5, timerMin: 45, endAt: null, stopTimer: null, wake: null };
+function noiseBuffer(ctx, kind) {
+  const len = ctx.sampleRate * 8, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    if (kind === "white") d[i] = w * 0.35;
+    else if (kind === "pink") {
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.09; b6 = w * 0.115926;
+    } else { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.2; }
+  }
+  return buf;
+}
+async function playSound(id) {
+  if (audio.playing === id) { stopSound(); return; }
+  stopSound(true);
+  try {
+    audio.ctx = audio.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    await audio.ctx.resume();
+  } catch { toast("This browser can't play sound here."); return; }
+  const ctx = audio.ctx;
+  const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx, id === "waves" ? "brown" : id); src.loop = true;
+  const gain = ctx.createGain(); gain.gain.value = 0;
+  let node = src;
+  if (id === "waves") {
+    const shape = ctx.createGain(); shape.gain.value = 0.55;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.09;
+    const depth = ctx.createGain(); depth.gain.value = 0.45;
+    lfo.connect(depth).connect(shape.gain); lfo.start(); audio.lfo = lfo;
+    src.connect(shape); node = shape;
+  }
+  node.connect(gain).connect(ctx.destination);
+  src.start();
+  gain.gain.linearRampToValueAtTime(audio.vol, ctx.currentTime + 1.5);
+  Object.assign(audio, { src, gain, playing: id });
+  if (audio.timerMin) { audio.endAt = Date.now() + audio.timerMin * MIN; audio.stopTimer = setTimeout(() => stopSound(), audio.timerMin * MIN); } else audio.endAt = null;
+  try { if (navigator.wakeLock) audio.wake = await navigator.wakeLock.request("screen"); } catch {}
+  syncSoundUI();
+}
+function stopSound(quick) {
+  clearTimeout(audio.stopTimer); audio.endAt = null;
+  if (audio.src && audio.ctx) {
+    const { src, gain, lfo, ctx } = audio, t = ctx.currentTime, fade = quick ? 0.15 : 2;
+    gain.gain.cancelScheduledValues(t); gain.gain.setValueAtTime(gain.gain.value, t); gain.gain.linearRampToValueAtTime(0, t + fade);
+    setTimeout(() => { try { src.stop(); lfo && lfo.stop(); } catch {} }, fade * 1000 + 50);
+  }
+  Object.assign(audio, { src: null, gain: null, lfo: null, playing: null });
+  try { audio.wake && audio.wake.release(); } catch {} audio.wake = null;
+  syncSoundUI();
+}
+function soundsView() {
+  return `<section class="card">
+    <div class="eyebrow">Sleep sounds</div><h2>Tap a sound to play</h2>
+    <div class="sounds">${SOUNDS.map(s => `<button class="snd" data-snd="${s.id}" aria-pressed="false"><div class="wave"><i></i><i></i><i></i><i></i><i></i></div><b>${s.name}</b><span>${s.sub}</span></button>`).join("")}</div>
+    <label class="f" for="vol">Volume<input id="vol" type="range" min="0.05" max="1" step="0.05" value="${audio.vol}"></label>
+    <div class="f" style="display:flex;flex-direction:column;gap:6px"><span style="font-weight:700;font-size:13px">Turn off after</span>
+      <div class="seg" id="sndTimer">${[[15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "1 hour"], [0, "Keep playing"]].map(([v, l]) => `<button type="button" data-min="${v}" aria-pressed="${audio.timerMin === v}">${l}</button>`).join("")}</div></div>
+    <div class="small muted" id="sndState"></div>
+  </section>
+  <section class="card"><p class="small muted" style="margin:0">Keep the volume moderate and the phone a metre or more from the cot. Sound stops if this page closes or the phone locks, so keep the screen on while it plays.</p></section>`;
+}
+function syncSoundUI() {
+  document.querySelectorAll("[data-snd]").forEach(b => { const on = b.dataset.snd === audio.playing; b.setAttribute("aria-pressed", on); b.classList.toggle("playing", on); });
+  const st = $("#sndState"); if (!st) return;
+  st.textContent = audio.playing ? (audio.endAt ? `Playing · stops at ${fmtTime(audio.endAt)}. Tap the sound again to stop.` : "Playing until you stop it. Tap the sound again to stop.") : "Nothing playing.";
+}
+
+// ---------- entry sheet ----------
+let sheet = null; // { ev, isNew, confirmDelete }
+function openSheet(ev, isNew) { sheet = { ev: { ...ev }, isNew, confirmDelete: false }; drawSheet(); }
+function closeSheet() { sheet = null; $("#sheetRoot").innerHTML = ""; }
+function drawSheet() {
+  if (!sheet) return;
+  const e = sheet.ev;
+  const titles = { sleep: "Sleep", feed: "Feed", diaper: "Diaper", note: "Note" };
+  let fields = "";
+  if (e.type === "sleep") {
+    fields = `<div class="row2"><label class="f" for="fStart">Fell asleep<input class="in" id="fStart" type="datetime-local" value="${toInput(e.start)}" required></label>
+      <label class="f" for="fEnd">Woke up<input class="in" id="fEnd" type="datetime-local" value="${e.end ? toInput(e.end) : ""}"></label></div>
+      <span class="small muted">Leave "Woke up" empty if still asleep.</span>`;
+  } else if (e.type === "feed") {
+    fields = `<div class="seg" id="fKind">${Object.entries(FEED_LABEL).map(([k, l]) => `<button type="button" data-k="${k}" aria-pressed="${e.kind === k}">${({ left: "Left breast", right: "Right breast" })[k] || l}</button>`).join("")}</div>
+      <div class="row2"><label class="f" for="fStart">Time<input class="in" id="fStart" type="datetime-local" value="${toInput(e.start)}" required></label>
+      ${e.kind === "bottle" ? `<label class="f" for="fAmount">Amount (ml)<input class="in num" id="fAmount" type="number" inputmode="numeric" min="0" max="500" value="${e.amount ?? ""}"></label>`
+        : e.kind === "solids" ? `<label class="f" for="fNote">What<input class="in" id="fNote" maxlength="80" value="${esc(e.note)}" placeholder="e.g. pear"></label>`
+        : `<label class="f" for="fMinutes">Minutes<input class="in num" id="fMinutes" type="number" inputmode="numeric" min="0" max="120" value="${e.minutes ?? ""}"></label>`}</div>`;
+  } else if (e.type === "diaper") {
+    fields = `<div class="seg" id="fKind">${Object.entries(DIAPER_LABEL).map(([k, l]) => `<button type="button" data-k="${k}" aria-pressed="${e.kind === k}">${l}</button>`).join("")}</div>
+      <label class="f" for="fStart">Time<input class="in" id="fStart" type="datetime-local" value="${toInput(e.start)}" required></label>`;
+  } else {
+    fields = `<label class="f" for="fStart">Time<input class="in" id="fStart" type="datetime-local" value="${toInput(e.start)}" required></label>
+      <label class="f" for="fNote">Note<textarea class="in" id="fNote" rows="3" maxlength="400" placeholder="e.g. Teething, extra fussy">${esc(e.note)}</textarea></label>`;
+  }
+  const del = sheet.isNew ? "<span></span>" : sheet.confirmDelete
+    ? `<button type="button" class="btn danger confirm" data-sheet="delete-yes">Delete entry</button>`
+    : `<button type="button" class="btn danger" data-sheet="delete">Delete</button>`;
+  $("#sheetRoot").innerHTML = `<div class="scrim" data-sheet="close"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${titles[e.type]}"><form class="sheet-in" id="entryForm">
+      <div class="day-head"><h2>${sheet.isNew ? "Add" : "Edit"} ${titles[e.type].toLowerCase()}</h2><span class="tl-dot k-${e.type}">${ICON[e.type]}</span></div>
+      ${fields}
+      <div class="actions">${del}<div class="r"><button type="button" class="btn" data-sheet="close">Cancel</button><button type="submit" class="btn primary">Save</button></div></div>
+    </form></div>`;
+  const first = $("#sheetRoot input, #sheetRoot textarea"); if (first && sheet.isNew && e.type === "note") first.focus();
+}
+function readSheet() {
+  const e = sheet.ev;
+  const v = id => { const el = $("#" + id); return el ? el.value : undefined; };
+  e.start = fromInput(v("fStart")) || e.start;
+  if (e.type === "sleep") e.end = fromInput(v("fEnd"));
+  if (v("fAmount") !== undefined) e.amount = v("fAmount") ? Number(v("fAmount")) : null;
+  if (v("fMinutes") !== undefined) e.minutes = v("fMinutes") ? Number(v("fMinutes")) : null;
+  if (v("fNote") !== undefined) e.note = v("fNote").trim();
+  return e;
+}
+
+// ---------- events ----------
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("button, .scrim"); if (!t) return;
+  if (t.dataset.tab) { S.tab = t.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  if (t.dataset.act === "sleep") { safe(store.put({ id: newId(), type: "sleep", start: Date.now(), end: null }), "Sleep started"); return; }
+  if (t.dataset.act === "wake") { const cur = sleeps().find(e => !e.end); if (cur) safe(store.put({ ...cur, end: Date.now() }), "Wake-up logged"); return; }
+  if (t.dataset.new) {
+    const now = Date.now(), type = t.dataset.new;
+    const base = { id: newId(), type, start: now };
+    if (type === "sleep") Object.assign(base, { start: now - HOUR, end: now });
+    if (type === "feed") { const lastFeed = S.events.find(e => e.type === "feed" && (e.kind === "left" || e.kind === "right")); Object.assign(base, { kind: lastFeed ? (lastFeed.kind === "left" ? "right" : "left") : "left" }); }
+    if (type === "diaper") base.kind = "wet";
+    openSheet(base, true); return;
+  }
+  if (t.dataset.edit) { const e = S.events.find(x => x.id === t.dataset.edit); if (e) { if (S.readOnly) return; openSheet(e, false); } return; }
+  if (t.dataset.day) { S.dayOffset = Math.max(0, S.dayOffset + Number(t.dataset.day)); render(); return; }
+  if (t.dataset.k && sheet) { readSheet(); sheet.ev.kind = t.dataset.k; drawSheet(); return; }
+  if (t.dataset.sheet === "close") { closeSheet(); return; }
+  if (t.dataset.sheet === "delete") { readSheet(); sheet.confirmDelete = true; drawSheet(); return; }
+  if (t.dataset.sheet === "delete-yes") { const id = sheet.ev.id; closeSheet(); safe(store.remove(id), "Entry deleted"); return; }
+  if (t.dataset.snd) { playSound(t.dataset.snd); return; }
+  if (t.dataset.min !== undefined && t.closest("#sndTimer")) {
+    audio.timerMin = Number(t.dataset.min);
+    clearTimeout(audio.stopTimer);
+    if (audio.playing && audio.timerMin) { audio.endAt = Date.now() + audio.timerMin * MIN; audio.stopTimer = setTimeout(() => stopSound(), audio.timerMin * MIN); } else audio.endAt = null;
+    document.querySelectorAll("#sndTimer button").forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.min) === audio.timerMin));
+    syncSoundUI(); return;
+  }
+});
+document.addEventListener("input", ev => {
+  if (ev.target.id === "vol") { audio.vol = Number(ev.target.value); if (audio.gain && audio.ctx) audio.gain.gain.setTargetAtTime(audio.vol, audio.ctx.currentTime, 0.1); }
+});
+document.addEventListener("submit", ev => {
+  ev.preventDefault();
+  if (ev.target.id === "profileForm") {
+    const name = $("#pName").value.trim(), birth = $("#pBirth").value;
+    if (!name || !birth) return;
+    safe(store.setProfile({ name, birth }), S.profile ? "Profile saved" : null);
+    if (!S.profile) S.tab = "today";
+    return;
+  }
+  if (ev.target.id === "entryForm" && sheet) {
+    const e = readSheet();
+    if (e.type === "sleep" && e.end && e.end <= e.start) { toast("Wake-up time must be after the fall-asleep time."); return; }
+    if (e.type === "sleep" && !e.end && sleeps().some(x => !x.end && x.id !== e.id)) { toast("A sleep is already in progress. Add a wake-up time."); return; }
+    const isNew = sheet.isNew; closeSheet();
+    safe(store.put(e), isNew ? "Saved" : "Changes saved");
+  }
+});
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && sheet) closeSheet(); });
+
+let toastT;
+function toast(msg) { clearTimeout(toastT); $("#toastRoot").innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`; toastT = setTimeout(() => $("#toastRoot").innerHTML = "", 2600); }
+
+// live clocks and plan refresh
+setInterval(() => {
+  const now = Date.now();
+  document.querySelectorAll('[data-live="since"]').forEach(el => el.textContent = fmtClock(now - Number(el.dataset.from)));
+  if (S.tab === "sounds") syncSoundUI();
+}, 1000);
+setInterval(() => { if (S.tab === "today" && !sheet && !document.activeElement?.closest?.("form")) render(); }, 60000);
+
+render();
+store.init();
+})();
+</script>
